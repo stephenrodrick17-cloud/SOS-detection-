@@ -1,5 +1,5 @@
 {
-  "buildCommand": "cd frontend && npm install --silent && npm run build",
+  "buildCommand": "cd frontend && npm install --silent && NODE_OPTIONS=--no-deprecation npm run build",
   "outputDirectory": "frontend/build",
   "installCommand": "cd frontend && npm install --silent --legacy-peer-deps",
   "framework": "create-react-app"
