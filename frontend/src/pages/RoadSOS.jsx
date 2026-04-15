@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Phone, MapPin, Activity, Shield, Navigation, ChevronRight, Zap, Target, Radio } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
@@ -46,9 +46,47 @@ const RoadSOS = () => {
   const [loading, setLoading] = useState(false);
   const TOMTOM_KEY = process.env.REACT_APP_TOMTOM_KEY || '8tmBQARK6WSwVaFMRGpDdxsTTJRFhm5k';
 
+  const fetchNearbyServices = useCallback(async (loc) => {
+    setLoading(true);
+    try {
+      const categories = { hospitals: '7311', police: '7322', rescue: '9935' };
+      const results = {};
+      for (const [key, catId] of Object.entries(categories)) {
+        const response = await fetch(`https://api.tomtom.com/search/2/categorySearch/${key}.json?key=${TOMTOM_KEY}&lat=${loc.lat}&lon=${loc.lon}&radius=10000&categorySet=${catId}`);
+        const data = await response.json();
+        results[key] = data.results.slice(0, 5).map(item => ({
+          name: item.poi.name,
+          address: item.address.freeformAddress,
+          dist: (item.dist / 1000).toFixed(1),
+          phone: item.poi.phone || 'Emergency Line',
+          pos: item.position
+        }));
+      }
+      setNearbyServices(results);
+    } catch (error) { toast.error('Satellite link interrupted'); }
+    finally { setLoading(false); }
+  }, [TOMTOM_KEY]);
+
+  const getCurrentLocation = useCallback(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const loc = { lat: position.coords.latitude, lon: position.coords.longitude };
+          setLocation(loc);
+          fetchNearbyServices(loc);
+        },
+        () => {
+          const defaultLoc = { lat: 19.0760, lon: 72.8777 }; 
+          setLocation(defaultLoc);
+          fetchNearbyServices(defaultLoc);
+        }
+      );
+    }
+  }, [fetchNearbyServices]);
+
   useEffect(() => {
     getCurrentLocation();
-  }, []);
+  }, [getCurrentLocation]);
 
   // Motion Engine: Simulates satellite-tracked units approaching the user
   useEffect(() => {
@@ -79,44 +117,6 @@ const RoadSOS = () => {
 
     return () => clearInterval(interval);
   }, [location]);
-
-  const getCurrentLocation = () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const loc = { lat: position.coords.latitude, lon: position.coords.longitude };
-          setLocation(loc);
-          fetchNearbyServices(loc);
-        },
-        () => {
-          const defaultLoc = { lat: 19.0760, lon: 72.8777 }; 
-          setLocation(defaultLoc);
-          fetchNearbyServices(defaultLoc);
-        }
-      );
-    }
-  };
-
-  const fetchNearbyServices = async (loc) => {
-    setLoading(true);
-    try {
-      const categories = { hospitals: '7311', police: '7322', rescue: '9935' };
-      const results = {};
-      for (const [key, catId] of Object.entries(categories)) {
-        const response = await fetch(`https://api.tomtom.com/search/2/categorySearch/${key}.json?key=${TOMTOM_KEY}&lat=${loc.lat}&lon=${loc.lon}&radius=10000&categorySet=${catId}`);
-        const data = await response.json();
-        results[key] = data.results.slice(0, 5).map(item => ({
-          name: item.poi.name,
-          address: item.address.freeformAddress,
-          dist: (item.dist / 1000).toFixed(1),
-          phone: item.poi.phone || 'Emergency Line',
-          pos: item.position
-        }));
-      }
-      setNearbyServices(results);
-    } catch (error) { toast.error('Satellite link interrupted'); }
-    finally { setLoading(false); }
-  };
 
   const handleSOS = () => {
     toast.error('🚨 SOS SIGNAL BROADCASTED TO SATELLITE NETWORK', { position: "top-center" });
