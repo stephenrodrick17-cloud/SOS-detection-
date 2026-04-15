@@ -11,6 +11,8 @@ load_dotenv()
 
 # Database configuration
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./infrastructure_damage.db")
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 # Create engine
 engine = create_engine(
