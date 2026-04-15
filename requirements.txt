@@ -8,10 +8,10 @@ pydantic>=2.5.0
 pydantic[email]>=2.5.0
 python-dotenv>=1.0.0
 
-# Computer Vision (lightweight inference)
+# Computer Vision (CPU-only inference)
 ultralytics>=8.0.211
 opencv-python>=4.8.1.78
-onnxruntime>=1.17.0
+onnxruntime>=1.17.0  # CPU version only - no CUDA
 numpy>=1.24.3
 scikit-image>=0.22.0
 
