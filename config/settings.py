@@ -9,6 +9,8 @@ load_dotenv()
 
 # Database
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./infrastructure_damage.db")
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 # Twilio Configuration
 TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID", "")
@@ -23,7 +25,7 @@ SENDER_EMAIL = os.getenv("SENDER_EMAIL", "alerts@infrastructure-damage.local")
 GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY", "")
 
 # Model Configuration
-MODEL_PATH = os.getenv("MODEL_PATH", r"c:\Users\asus\Downloads\Road portfolio\infrastructure-damage-detection\runs\detect\infrastructure_damage\weights\best.pt")
+MODEL_PATH = os.getenv("MODEL_PATH", os.path.join(os.getcwd(), "model", "weights", "best.pt"))
 CONFIDENCE_THRESHOLD = float(os.getenv("CONFIDENCE_THRESHOLD", "0.5"))
 
 # Server Configuration
