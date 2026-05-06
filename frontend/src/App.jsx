@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
-import { AlertCircle, LayoutDashboard, Camera, FileText, Users, Map as MapIcon, Database, Menu, X, Activity } from 'lucide-react';
+import { AlertCircle, LayoutDashboard, Camera, FileText, Users, Map as MapIcon, Database, Menu, X, Activity, Zap } from 'lucide-react';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -12,7 +12,9 @@ import ReportsPage from './pages/ReportsPage';
 import DatasetsPage from './pages/DatasetsPage';
 import HomePage from './pages/HomePage';
 import RoadSOS from './pages/RoadSOS';
+import ServicesPage from './pages/ServicesPage';
 import AIChatWidget from './components/AIChatWidget';
+import ErrorBoundary from './components/ErrorBoundary';
 import { AIChatProvider, useAIChat } from './components/AIChatContext';
 
 import './App.css';
@@ -38,8 +40,9 @@ function App() {
 
   return (
     <AIChatProvider>
-    <Router>
-      <div className="min-h-screen text-slate-200 selection:bg-orange-500/30 selection:text-orange-200 bg-transparent">
+      <ErrorBoundary>
+        <Router>
+          <div className="min-h-screen text-slate-200 selection:bg-orange-500/30 selection:text-orange-200 bg-transparent">
         {/* Navigation */}
         <nav className="sticky top-0 z-50 bg-slate-950/60 backdrop-blur-xl border-b border-slate-800 shadow-2xl">
           <div className="w-full px-4 sm:px-6 lg:px-12">
@@ -64,6 +67,7 @@ function App() {
                 <NavLink to="/reports" icon={<FileText size={18} />} label="Reports" />
                 <NavLink to="/contractors" icon={<Users size={18} />} label="Contractors" />
                 <NavLink to="/map" icon={<MapIcon size={18} />} label="Damage Map" />
+                <NavLink to="/services" icon={<Zap size={18} />} label="Services" />
                 <NavLink to="/datasets" icon={<Database size={18} />} label="Datasets" />
                 <NavLink to="/sos" icon={<AlertCircle size={18} />} label="Road SOS" isEmergency />
                 
@@ -100,6 +104,7 @@ function App() {
               <MobileNavLink to="/reports" icon={<FileText size={20} />} label="Reports" onClick={() => setIsMenuOpen(false)} />
               <MobileNavLink to="/contractors" icon={<Users size={20} />} label="Contractors" onClick={() => setIsMenuOpen(false)} />
               <MobileNavLink to="/map" icon={<MapIcon size={20} />} label="Damage Map" onClick={() => setIsMenuOpen(false)} />
+              <MobileNavLink to="/services" icon={<Zap size={20} />} label="Services" onClick={() => setIsMenuOpen(false)} />
               <MobileNavLink to="/datasets" icon={<Database size={20} />} label="Datasets" onClick={() => setIsMenuOpen(false)} />
               <MobileNavLink to="/sos" icon={<AlertCircle size={20} />} label="Road SOS" isEmergency onClick={() => setIsMenuOpen(false)} />
             </div>
@@ -115,6 +120,7 @@ function App() {
             <Route path="/reports" element={<ReportsPage />} />
             <Route path="/contractors" element={<ContractorsPage />} />
             <Route path="/map" element={<MapPage />} />
+            <Route path="/services" element={<ServicesPage />} />
             <Route path="/datasets" element={<DatasetsPage />} />
             <Route path="/sos" element={<RoadSOS />} />
           </Routes>
@@ -175,7 +181,8 @@ function App() {
         {/* Global AI Chat Widget */}
         <GlobalAIChat />
       </div>
-    </Router>
+        </Router>
+      </ErrorBoundary>
     </AIChatProvider>
   );
 }

@@ -44,9 +44,15 @@ const RoadSOS = () => {
     { id: 2, type: 'ambulance', name: 'MED-12', pos: [0, 0], status: 'RESPONDING' }
   ]);
   const [loading, setLoading] = useState(false);
-  const TOMTOM_KEY = process.env.REACT_APP_TOMTOM_KEY || '8tmBQARK6WSwVaFMRGpDdxsTTJRFhm5k';
+  const TOMTOM_KEY = process.env.REACT_APP_TOMTOM_KEY;
 
   const fetchNearbyServices = useCallback(async (loc) => {
+    if (!TOMTOM_KEY) {
+      toast.error('TomTom API key not configured');
+      setLoading(false);
+      return;
+    }
+    
     setLoading(true);
     try {
       const categories = { hospitals: '7311', police: '7322', rescue: '9935' };

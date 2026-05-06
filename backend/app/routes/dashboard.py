@@ -2,13 +2,14 @@
 Dashboard Routes
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 import logging
 from typing import Optional
 from datetime import datetime, timedelta
+from sqlalchemy.orm import Session
 
 from app.schemas import DashboardOverview, DamageStatistics, LocationCluster
-from database.database import SessionLocal
+from database.database import get_db
 from database.models import DamageReport, Alert, Contractor
 from app.services.contractors import ContractorService
 
@@ -16,14 +17,16 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 @router.get("/overview")
-async def get_dashboard_overview():
+async def get_dashboard_overview(db: Session = Depends(get_db)):
     """
     Get dashboard overview with statistics
+    
+    Args:
+        db: Database session (injected)
     
     Returns:
         Dashboard overview data
     """
-    db = SessionLocal()
     try:
         # Get statistics
         total_reports = db.query(DamageReport).count()
@@ -82,13 +85,12 @@ async def get_dashboard_overview():
     except Exception as e:
         logger.error(f"Error getting dashboard overview: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        db.close()
 
 @router.get("/statistics")
 async def get_statistics(
     days: int = 30,
-    damage_type: Optional[str] = None
+    damage_type: Optional[str] = None,
+    db: Session = Depends(get_db)
 ):
     """
     Get detailed statistics
@@ -96,11 +98,11 @@ async def get_statistics(
     Args:
         days: Number of days to include
         damage_type: Filter by damage type
+        db: Database session (injected)
         
     Returns:
         Detailed statistics
     """
-    db = SessionLocal()
     try:
         cutoff_date = datetime.utcnow() - timedelta(days=days)
         
@@ -157,18 +159,15 @@ async def get_statistics(
     except Exception as e:
         logger.error(f"Error getting statistics: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        db.close()
 
 @router.get("/map-data")
-async def get_map_data():
+async def get_map_data(db: Session = Depends(get_db)):
     """
     Get all damage locations for map view
     
     Returns:
         List of damage clusters for mapping
     """
-    db = SessionLocal()
     try:
         reports = db.query(DamageReport).filter(
             DamageReport.latitude.isnot(None),
@@ -213,18 +212,18 @@ async def get_map_data():
     except Exception as e:
         logger.error(f"Error getting map data: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        db.close()
 
 @router.get("/alerts-status")
-async def get_alerts_status():
+async def get_alerts_status(db: Session = Depends(get_db)):
     """
     Get status of sent alerts
+    
+    Args:
+        db: Database session (injected)
     
     Returns:
         Alert delivery status
     """
-    db = SessionLocal()
     try:
         total_alerts = db.query(Alert).count()
         
@@ -244,5 +243,3 @@ async def get_alerts_status():
     except Exception as e:
         logger.error(f"Error getting alert status: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        db.close()

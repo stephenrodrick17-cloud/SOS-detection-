@@ -53,7 +53,10 @@ const DatasetsPage = () => {
   };
 
   const getImageUrl = (path) => {
-    return `http://localhost:8000/static/${path}`;
+    if (!path) return '';
+    // Sanitize path to prevent directory traversal
+    const sanitized = path.replace(/\.\.\//g, '').replace(/^\//g, '');
+    return `/static/${sanitized}`;
   };
 
   if (loading) {

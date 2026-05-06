@@ -26,37 +26,92 @@ class API {
 
     const response = await fetch(url, options);
     if (!response.ok) {
-      const error = await response.json().catch(() => ({}));
-      throw new Error(error.detail || `API Error: ${response.status}`);
+      let errorMessage = `API Error: ${response.status}`;
+      try {
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const error = await response.json();
+          errorMessage = error.detail || error.message || errorMessage;
+        } else {
+          const text = await response.text();
+          errorMessage = text || errorMessage;
+        }
+      } catch (parseError) {
+        // If parsing fails, use default error message
+      }
+      throw new Error(errorMessage);
     }
 
     return response.json();
   }
 
+  // Generic HTTP methods
+  async get(endpoint) {
+    return this.request('GET', endpoint);
+  }
+
+  async post(endpoint, data = null) {
+    return this.request('POST', endpoint, data);
+  }
+
+  async put(endpoint, data = null) {
+    return this.request('PUT', endpoint, data);
+  }
+
+  async delete(endpoint) {
+    return this.request('DELETE', endpoint);
+  }
+
   // Detection endpoints
   async detectDamage(formData, metadata = null) {
     const url = `${this.baseURL}/detection/detect`;
-    const queryParams = new URLSearchParams();
     
+    // Ensure formData has metadata appended
     if (metadata) {
-      if (metadata.latitude) queryParams.append('latitude', metadata.latitude);
-      if (metadata.longitude) queryParams.append('longitude', metadata.longitude);
-      if (metadata.road_type) queryParams.append('road_type', metadata.road_type);
+      if (metadata.latitude) formData.append('latitude', metadata.latitude);
+      if (metadata.longitude) formData.append('longitude', metadata.longitude);
+      if (metadata.road_type) formData.append('road_type', metadata.road_type);
     }
 
-    const response = await fetch(
-      `${url}${queryParams.toString() ? '?' + queryParams.toString() : ''}`,
-      {
+    try {
+      console.log('Sending detection request to:', url);
+      console.log('FormData entries:', Array.from(formData.entries()).map(([k,v]) => [k, v instanceof File ? `File: ${v.name} (${v.size} bytes)` : v]));
+      
+      const response = await fetch(url, {
         method: 'POST',
-        body: formData
+        body: formData,
+        // NOTE: Don't set Content-Type header for FormData - browser will set it with correct boundary
+      });
+
+      console.log('Detection response status:', response.status);
+      console.log('Detection response headers:', response.headers);
+
+      if (!response.ok) {
+        let errorText = '';
+        try {
+          errorText = await response.text();
+        } catch (e) {
+          errorText = 'Could not read error response';
+        }
+        console.error('Detection error response body:', errorText);
+        throw new Error(`Detection failed with status ${response.status}: ${errorText.substring(0, 100)}`);
       }
-    );
 
-    if (!response.ok) {
-      throw new Error(`Detection failed with status ${response.status}`);
+      const result = await response.json();
+      console.log('Detection success:', result);
+      return result;
+    } catch (error) {
+      console.error('Detection fetch error:', error);
+      console.error('Error name:', error.name);
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+      
+      // Provide more specific error message for network errors
+      if (error.name === 'TypeError' && error.message.includes('failed to fetch')) {
+        throw new Error(`Network error - Unable to reach server at ${url}. Check if backend is running and CORS is configured correctly.`);
+      }
+      throw error;
     }
-
-    return response.json();
   }
 
   async getReport(reportId) {

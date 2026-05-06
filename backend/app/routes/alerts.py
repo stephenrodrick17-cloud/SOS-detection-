@@ -2,14 +2,15 @@
 Alert Routes
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 import logging
 from typing import List
+from sqlalchemy.orm import Session
 
 from app.schemas import AlertRequest, AlertResponse
 from app.services.alerts import AlertService
 from app.services.contractors import ContractorService
-from database.database import SessionLocal
+from database.database import get_db
 from database.models import DamageReport, Alert
 
 logger = logging.getLogger(__name__)
@@ -17,11 +18,37 @@ router = APIRouter()
 
 alert_service = AlertService()
 
+def is_valid_india_coordinates(lat: float, lon: float) -> bool:
+    """
+    Validate that GPS coordinates are within India bounds
+    
+    Args:
+        lat: Latitude coordinate
+        lon: Longitude coordinate
+        
+    Returns:
+        True if coordinates are valid, False otherwise
+    """
+    # India approximate bounds: 8°N to 35°N, 68°E to 97°E
+    if not (-90 <= lat <= 90 and -180 <= lon <= 180):
+        return False
+    
+    if lat == 0 and lon == 0:  # Invalid default/placeholder
+        return False
+        
+    # Check approximate India bounds
+    if not (8 <= lat <= 35 and 68 <= lon <= 97):
+        logger.warning(f"Coordinates outside India bounds: {lat}, {lon}")
+        return False
+        
+    return True
+
 @router.post("/send-alert/{report_id}")
 async def send_damage_alert(
     report_id: int,
     phone_numbers: List[str],
-    message_type: str = "sms"
+    message_type: str = "sms",
+    db: Session = Depends(get_db)
 ):
     """
     Send alert about specific damage report
@@ -30,11 +57,11 @@ async def send_damage_alert(
         report_id: Damage report ID
         phone_numbers: List of phone numbers to alert
         message_type: Type of alert (sms, email, both)
+        db: Database session (injected)
         
     Returns:
         Alert details
     """
-    db = SessionLocal()
     try:
         # Get damage report
         report = db.query(DamageReport).filter(DamageReport.id == report_id).first()
@@ -97,13 +124,12 @@ async def send_damage_alert(
     except Exception as e:
         logger.error(f"Error sending alert: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        db.close()
 
 @router.post("/send-to-contractors/{report_id}")
 async def send_alert_to_contractors(
     report_id: int,
-    max_contractors: int = 3
+    max_contractors: int = 3,
+    db: Session = Depends(get_db)
 ):
     """
     Send alert to recommended contractors
@@ -111,11 +137,11 @@ async def send_alert_to_contractors(
     Args:
         report_id: Damage report ID
         max_contractors: Maximum contractors to notify
+        db: Database session (injected)
         
     Returns:
         Alert details
     """
-    db = SessionLocal()
     try:
         # Get damage report
         report = db.query(DamageReport).filter(DamageReport.id == report_id).first()
@@ -127,6 +153,12 @@ async def send_alert_to_contractors(
             raise HTTPException(
                 status_code=400,
                 detail="Report missing GPS coordinates"
+            )
+        
+        if not is_valid_india_coordinates(report.latitude, report.longitude):
+            raise HTTPException(
+                status_code=400,
+                detail="Report has invalid GPS coordinates (outside service area)"
             )
         
         # Get contractor recommendations

@@ -2,19 +2,21 @@
 Detection Routes
 """
 
-from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
+from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, Form
 from fastapi.responses import FileResponse
 import os
 import logging
 from typing import Optional
 from datetime import datetime
 import shutil
+import json
 
 from app.schemas import DetectionRequest, DamageReportResponse
 from app.services.detection import DamageDetectionService
 from app.services.cost_estimation import CostEstimationService
-from database.database import SessionLocal
+from database.database import SessionLocal, get_db
 from database.models import DamageReport
+from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -26,17 +28,54 @@ detection_service = DamageDetectionService()
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
+@router.post("/test-upload")
+async def test_upload(
+    file: Optional[UploadFile] = File(None),
+    latitude: Optional[float] = Form(None),
+    longitude: Optional[float] = Form(None),
+    road_type: Optional[str] = Form(None)
+):
+    """Test endpoint to verify form data reception"""
+    try:
+        result = {
+            "success": True,
+            "file_received": file is not None,
+            "file_name": file.filename if file else None,
+            "file_size": file.size if file else None,
+            "file_content_type": file.content_type if file else None,
+            "latitude_received": latitude is not None,
+            "latitude_value": latitude,
+            "longitude_received": longitude is not None,
+            "longitude_value": longitude,
+            "road_type_received": road_type is not None,
+            "road_type_value": road_type,
+            "message": "Test upload successful"
+        }
+        logger.info(f"Test upload result: {result}")
+        return result
+    except Exception as e:
+        logger.error(f"Error in test_upload: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Test failed: {str(e)}")
+
 @router.post("/detect")
 async def detect_damage(
     file: UploadFile = File(...),
-    detection_request: DetectionRequest = None
+    latitude: Optional[float] = Form(None),
+    longitude: Optional[float] = Form(None),
+    location_address: Optional[str] = Form(None),
+    road_type: Optional[str] = Form(None),
+    db: Session = Depends(get_db)
 ):
     """
     Upload image and detect infrastructure damage
     
     Args:
         file: Image file
-        detection_request: Optional request with GPS and location data
+        latitude: GPS latitude (optional)
+        longitude: GPS longitude (optional)
+        location_address: Location address (optional)
+        road_type: Type of road (optional)
+        db: Database session (injected)
         
     Returns:
         Detection results with bounding boxes and severity
@@ -69,7 +108,7 @@ async def detect_damage(
                 damage_area=damage_area,
                 damage_type=detection["damage_type"],
                 severity=detection["severity"],
-                road_type=getattr(detection_request, 'road_type', 'unknown') if detection_request else 'unknown'
+                road_type=road_type or 'unknown'
             )
             
             processed_detections.append({
@@ -79,7 +118,6 @@ async def detect_damage(
             })
         
         # Save to database
-        db = SessionLocal()
         try:
             # Take the most severe detection as primary
             if processed_detections:
@@ -91,15 +129,15 @@ async def detect_damage(
                 
                 damage_report = DamageReport(
                     image_path=file_path,
-                    latitude=detection_request.latitude if detection_request else None,
-                    longitude=detection_request.longitude if detection_request else None,
-                    location_address=detection_request.location_address if detection_request else None,
+                    latitude=latitude,
+                    longitude=longitude,
+                    location_address=location_address,
                     damage_type=primary["damage_type"],
                     severity=primary["severity"],
                     confidence_score=primary["confidence"],
-                    bounding_boxes=str(primary["bbox"]),
+                    bounding_boxes=json.dumps(primary["bbox"]),
                     damage_area=primary["damage_area_m2"],
-                    road_type=detection_request.road_type if detection_request else None,
+                    road_type=road_type,
                     estimated_cost=primary["cost_estimation"]["material_cost"],
                     labor_cost=primary["cost_estimation"]["labor_cost"],
                     total_cost=primary["cost_estimation"]["total_cost"],
@@ -115,9 +153,9 @@ async def detect_damage(
                 # No damage detected
                 damage_report = DamageReport(
                     image_path=file_path,
-                    latitude=detection_request.latitude if detection_request else None,
-                    longitude=detection_request.longitude if detection_request else None,
-                    location_address=detection_request.location_address if detection_request else None,
+                    latitude=latitude,
+                    longitude=longitude,
+                    location_address=location_address,
                     damage_type="none",
                     severity="none",
                     confidence_score=0,
@@ -143,8 +181,8 @@ async def detect_damage(
         }
     
     except Exception as e:
-        logger.error(f"Error in detect_damage: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error in detect_damage: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Detection processing failed: {str(e)}")
 
 @router.post("/detect-video")
 async def detect_damage_video(
@@ -221,133 +259,129 @@ async def get_detection_image(filename: str):
     return FileResponse(file_path)
 
 @router.get("/report/{report_id}")
-async def get_damage_report(report_id: int):
+async def get_damage_report(report_id: int, db: Session = Depends(get_db)):
     """
     Get damage report by ID
     
     Args:
         report_id: Report ID
+        db: Database session (injected)
         
     Returns:
         Damage report details
     """
-    db = SessionLocal()
-    try:
-        report = db.query(DamageReport).filter(DamageReport.id == report_id).first()
-        
-        if not report:
-            raise HTTPException(status_code=404, detail="Report not found")
-        
-        return DamageReportResponse.model_validate(report)
-    finally:
-        db.close()
+    report = db.query(DamageReport).filter(DamageReport.id == report_id).first()
+    
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+    
+    return DamageReportResponse.model_validate(report)
 
-@router.get("/image/{report_id}")
-async def get_report_image(report_id: int):
+@router.get("/report/{report_id}/image")
+async def get_report_image(report_id: int, db: Session = Depends(get_db)):
     """
     Get image from damage report
     
     Args:
         report_id: Report ID
+        db: Database session (injected)
         
     Returns:
         Image file
     """
-    db = SessionLocal()
-    try:
-        report = db.query(DamageReport).filter(DamageReport.id == report_id).first()
-        
-        if not report or not os.path.exists(report.image_path):
-            raise HTTPException(status_code=404, detail="Image not found")
-        
-        return FileResponse(report.image_path)
-    finally:
-        db.close()
+    report = db.query(DamageReport).filter(DamageReport.id == report_id).first()
+    
+    if not report or not os.path.exists(report.image_path):
+        raise HTTPException(status_code=404, detail="Image not found")
+    
+    return FileResponse(report.image_path)
 
-@router.post("/annotate/{report_id}")
-async def get_annotated_image(report_id: int):
+@router.get("/report/{report_id}/annotated")
+async def get_annotated_image(report_id: int, db: Session = Depends(get_db)):
     """
     Get annotated image with detection boxes
     
     Args:
         report_id: Report ID
+        db: Database session (injected)
         
     Returns:
         Annotated image
     """
-    db = SessionLocal()
-    try:
-        report = db.query(DamageReport).filter(DamageReport.id == report_id).first()
-        
-        if not report or not os.path.exists(report.image_path):
-            raise HTTPException(status_code=404, detail="Report or image not found")
-        
-        # Create annotated image
-        output_path = os.path.join(UPLOAD_DIR, f"annotated_{report_id}.jpg")
-        success = detection_service.visualize_detections(report.image_path, output_path)
-        
-        if not success:
-            raise HTTPException(status_code=500, detail="Failed to create annotated image")
-        
-        return FileResponse(output_path)
-    finally:
-        db.close()
+    report = db.query(DamageReport).filter(DamageReport.id == report_id).first()
+    
+    if not report or not os.path.exists(report.image_path):
+        raise HTTPException(status_code=404, detail="Report or image not found")
+    
+    # Create annotated image
+    output_path = os.path.join(UPLOAD_DIR, f"annotated_{report_id}.jpg")
+    success = detection_service.visualize_detections(report.image_path, output_path)
+    
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to create annotated image")
+    
+    return FileResponse(output_path)
 
 @router.get("/reports/recent")
-async def get_recent_reports(limit: int = 10):
+async def get_recent_reports(limit: int = 10, db: Session = Depends(get_db)):
     """
     Get recent damage reports
     
     Args:
         limit: Number of reports to return
+        db: Database session (injected)
         
     Returns:
         List of recent reports
     """
-    db = SessionLocal()
-    try:
-        reports = db.query(DamageReport).order_by(
-            DamageReport.created_at.desc()
-        ).limit(limit).all()
-        
-        return [DamageReportResponse.model_validate(r) for r in reports]
-    finally:
-        db.close()
+    reports = db.query(DamageReport).order_by(
+        DamageReport.created_at.desc()
+    ).limit(limit).all()
+    
+    return [DamageReportResponse.model_validate(r) for r in reports]
 
 @router.get("/stats")
-async def get_detection_statistics():
+async def get_detection_statistics(db: Session = Depends(get_db)):
     """
     Get detection statistics
+    
+    Args:
+        db: Database session (injected)
     
     Returns:
         Statistics about detected damages
     """
-    db = SessionLocal()
-    try:
-        total_reports = db.query(DamageReport).count()
+    reports = db.query(DamageReport).all()
+    total_reports = len(reports)
+    
+    severity_counts = {}
+    type_counts = {}
+    confidence_scores = []
+    alerts_sent_count = 0
+    
+    for report in reports:
+        # Severity distribution
+        severity = report.severity
+        severity_counts[severity] = severity_counts.get(severity, 0) + 1
         
-        severity_counts = {}
-        for report in db.query(DamageReport).all():
-            severity = report.severity
-            severity_counts[severity] = severity_counts.get(severity, 0) + 1
+        # Type distribution
+        dtype = report.damage_type
+        type_counts[dtype] = type_counts.get(dtype, 0) + 1
         
-        type_counts = {}
-        for report in db.query(DamageReport).all():
-            dtype = report.damage_type
-            type_counts[dtype] = type_counts.get(dtype, 0) + 1
+        # Confidence tracking
+        if report.confidence_score:
+            confidence_scores.append(report.confidence_score)
         
-        total_cost = db.query(DamageReport).filter(
-            DamageReport.severity != "none"
-        ).count()
-        
-        return {
-            "total_reports": total_reports,
-            "by_severity": severity_counts,
-            "by_type": type_counts,
-            "avg_confidence": 0.75,  # Placeholder
-            "alerts_sent": db.query(DamageReport).filter(
-                DamageReport.alert_sent == True
-            ).count()
-        }
-    finally:
-        db.close()
+        # Alerts tracking
+        if report.alert_sent:
+            alerts_sent_count += 1
+    
+    avg_confidence = sum(confidence_scores) / len(confidence_scores) if confidence_scores else 0.0
+    
+    return {
+        "total_reports": total_reports,
+        "by_severity": severity_counts,
+        "by_type": type_counts,
+        "avg_confidence": round(avg_confidence, 3),
+        "alerts_sent": alerts_sent_count
+    }

@@ -3,14 +3,13 @@ Dataset configuration for YOLOv8 training
 Save as: data.yaml
 """
 
-path: /path/to/dataset  # Dataset root directory
-train: images/train     # Training images directory
-val: images/val         # Validation images directory
-test: images/test       # Test images (optional)
+path: c:\Users\asus\Downloads\Road portfolio\infrastructure-damage-detection\model\datasets\combined_dataset
+train: images
+val: images
+test: images
 
-# Classes
-nc: 3  # Number of classes
-names: ['pothole', 'crack', 'structural']  # Class names
+nc: 3
+names: ['pothole', 'crack', 'structural']
 
 """
 Directory structure:

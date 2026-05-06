@@ -3,6 +3,7 @@ import { Upload, Camera, MapPin, AlertCircle, FileVideo, Play, Pause, RefreshCw,
 import { toast } from 'react-toastify';
 import API from '../services/api';
 import { useAIChat } from '../components/AIChatContext';
+import { validateFile, isValidGPSCoordinates, CONSTANTS } from '../utils/constants';
 
 const DetectionPage = () => {
   const [activeTab, setActiveTab] = useState('image'); // 'image', 'video', 'realtime'
@@ -35,13 +36,23 @@ const DetectionPage = () => {
   }, []);
 
   const handleFileSelect = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setSelectedFile(file);
-      const url = URL.createObjectURL(file);
-      setPreview(url);
-      setResult(null);
+    const file = e.target.files?.[0];
+    if (!file) {
+      toast.error('No file selected');
+      return;
     }
+
+    // Validate file before processing
+    const validation = validateFile(file);
+    if (!validation.valid) {
+      toast.error(validation.error);
+      return;
+    }
+
+    setSelectedFile(file);
+    const url = URL.createObjectURL(file);
+    setPreview(url);
+    setResult(null);
   };
 
   const getGPSLocation = () => {
@@ -70,19 +81,27 @@ const DetectionPage = () => {
       return;
     }
 
+    // Validate GPS coordinates if provided
+    if (gpsLocation) {
+      if (!isValidGPSCoordinates(gpsLocation.latitude, gpsLocation.longitude)) {
+        toast.error('GPS coordinates are outside valid range (India: 8°N-35°N, 68°E-97°E)');
+        return;
+      }
+    }
+
     setLoading(true);
     setResult(null);
     try {
       const formData = new FormData();
       formData.append('file', selectedFile);
+      // Append metadata directly to FormData
+      if (gpsLocation?.latitude) formData.append('latitude', gpsLocation.latitude);
+      if (gpsLocation?.longitude) formData.append('longitude', gpsLocation.longitude);
+      if (roadType) formData.append('road_type', roadType);
 
       let response;
       if (activeTab === 'image') {
-        response = await API.detectDamage(formData, {
-          latitude: gpsLocation?.latitude,
-          longitude: gpsLocation?.longitude,
-          road_type: roadType
-        });
+        response = await API.detectDamage(formData, null);
       } else if (activeTab === 'video') {
         response = await API.detectVideo(formData);
       }
@@ -90,7 +109,7 @@ const DetectionPage = () => {
       setResult(response);
 
       if (activeTab === 'image') {
-        if (response.summary.total_damage_areas > 0) {
+        if (response?.summary?.total_damage_areas > 0) {
           toast.success(`Detected ${response.summary.total_damage_areas} damage area(s)`);
           // Set AI context so chat widget can explain this result
           setAnalysisContext({
@@ -104,10 +123,26 @@ const DetectionPage = () => {
           setAnalysisContext(null);
         }
       } else {
-        toast.success(`Video analysis complete: ${response.summary.total_detections} detections found`);
+        toast.success(`Video analysis complete: ${response?.summary?.total_detections || 0} detections found`);
       }
     } catch (error) {
-      toast.error(`Analysis failed: ${error.message}`);
+      console.error('Detection error in component:', error);
+      
+      // Parse error message for better UX
+      let errorMsg = error.message || 'Unknown error';
+      
+      if (errorMsg.includes('Network error')) {
+        errorMsg = 'Server connection failed. Make sure backend is running at port 8000.';
+      } else if (errorMsg.includes('CORS')) {
+        errorMsg = 'Cross-origin request blocked. Backend CORS configuration issue.';
+      } else if (errorMsg.includes('400')) {
+        errorMsg = 'Invalid request format or file type not supported.';
+      } else if (errorMsg.includes('500')) {
+        errorMsg = 'Server processing error. Check backend logs for details.';
+      }
+      
+      console.error('Formatted error:', errorMsg);
+      toast.error(`Analysis failed: ${errorMsg}`);
     } finally {
       setLoading(false);
     }

@@ -1,51 +1,73 @@
 import React, { useEffect, useState } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
-import { AlertCircle, TrendingUp, Users, MapPin, Activity, ShieldAlert, Clock, ChevronRight, Zap } from 'lucide-react';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  PieChart, Pie, Cell, AreaChart, Area, LineChart, Line
+} from 'recharts';
+import {
+  AlertCircle, TrendingUp, Users, MapPin, Activity, ShieldAlert, Clock, ChevronRight,
+  Zap, Gauge, Eye, Cpu, Radio, Navigation, Target, Ambulance, TriangleAlert, Sparkles, Bot
+} from 'lucide-react';
 import API from '../services/api';
 import { Link } from 'react-router-dom';
 import { useAIChat } from '../components/AIChatContext';
-import { Sparkles, Bot } from 'lucide-react';
+import locationDataService from '../services/locationDataService';
 
 const Dashboard = () => {
   const [dashboard, setDashboard] = useState(null);
+  const [locationData, setLocationData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState(null);
   const { setAnalysisContext } = useAIChat();
 
   useEffect(() => {
-    const fetchDashboard = async () => {
+    const fetchAllData = async () => {
       try {
-        const data = await API.getDashboardOverview();
-        if (data && data.success) {
-          setDashboard(data.dashboard);
+        // Fetch dashboard data
+        const dashboardData = await API.getDashboardOverview();
+        if (dashboardData && dashboardData.success) {
+          setDashboard(dashboardData.dashboard);
+          setAnalysisContext(dashboardData.dashboard);
         }
 
+        // Fetch statistics
         const statsData = await API.getStatistics(30);
         if (statsData && statsData.success) {
           setStats(statsData);
         }
+
+        // Fetch location data
+        const locData = await locationDataService.getLocationData(28.6139, 77.209, 5);
+        setLocationData(locData);
       } catch (error) {
-        console.error('Error fetching dashboard:', error);
+        console.error('Error fetching dashboard data:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchDashboard();
-    
-    // Real-time polling: Refresh dashboard data every 10 seconds
-    const interval = setInterval(fetchDashboard, 10000);
+    fetchAllData();
+    const interval = setInterval(fetchAllData, 10000);
     return () => clearInterval(interval);
-  }, []);
+  }, [setAnalysisContext]);
 
+  // Enhanced loading state
   if (loading) {
     return (
-      <div className="flex flex-col justify-center items-center h-[60vh] space-y-4">
-        <div className="relative h-16 w-16">
-          <div className="absolute inset-0 border-4 border-orange-500/20 rounded-full"></div>
-          <div className="absolute inset-0 border-4 border-orange-500 rounded-full border-t-transparent animate-spin"></div>
+      <div className="min-h-screen flex flex-col justify-center items-center">
+        <div className="relative">
+          {/* Outer rotating ring */}
+          <div className="absolute inset-0 w-24 h-24 border-2 border-transparent border-t-orange-500 border-r-orange-500/50 rounded-full animate-spin"></div>
+          {/* Inner rotating ring (opposite direction) */}
+          <div className="absolute inset-2 w-20 h-20 border-2 border-transparent border-b-blue-500 border-l-blue-500/50 rounded-full animate-spin" style={{ animationDirection: 'reverse' }}></div>
+          {/* Center pulse */}
+          <div className="absolute inset-6 w-12 h-12 bg-gradient-to-r from-orange-500 to-red-500 rounded-full animate-pulse"></div>
         </div>
-        <div className="text-slate-400 font-medium animate-pulse">Analyzing Infrastructure Data...</div>
+        <div className="mt-12 text-center">
+          <p className="text-xl font-bold bg-gradient-to-r from-orange-500 to-red-500 bg-clip-text text-transparent animate-pulse">
+            RoadGuard Initializing
+          </p>
+          <p className="text-slate-400 mt-2 text-sm">Analyzing Infrastructure Data...</p>
+        </div>
       </div>
     );
   }
@@ -57,26 +79,32 @@ const Dashboard = () => {
   };
 
   const severityData = dashboard?.statistics?.by_severity
-    ? Object.entries(dashboard.statistics.by_severity).map(([name, value]) => ({
-        name: name.charAt(0).toUpperCase() + name.slice(1),
-        value,
-        fill: COLORS[name] || '#666'
-      }))
+    ? Object.entries(dashboard.statistics.by_severity)
+        .filter(([_, value]) => value != null && typeof value === 'number')
+        .map(([name, value]) => ({
+          name: name.charAt(0).toUpperCase() + name.slice(1),
+          value: Math.max(0, value),
+          fill: COLORS[name] || '#666'
+        }))
     : [];
 
   const typeData = dashboard?.statistics?.by_type
-    ? Object.entries(dashboard.statistics.by_type).map(([name, value]) => ({
-        name: name.charAt(0).toUpperCase() + name.slice(1),
-        value
-      }))
+    ? Object.entries(dashboard.statistics.by_type)
+        .filter(([_, value]) => value != null && typeof value === 'number')
+        .map(([name, value]) => ({
+          name: name.charAt(0).toUpperCase() + name.slice(1),
+          value: Math.max(0, value)
+        }))
     : [];
 
   const costTrendData = stats?.daily_distribution
-    ? Object.entries(stats.daily_distribution).map(([date, count]) => ({
-        date: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        reports: count,
-        cost: (stats.cost_analysis?.average || 0) * count
-      }))
+    ? Object.entries(stats.daily_distribution)
+        .filter(([_, count]) => count != null && typeof count === 'number')
+        .map(([date, count]) => ({
+          date: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          reports: Math.max(0, count),
+          cost: Math.max(0, (stats.cost_analysis?.average ?? 0) * count)
+        }))
     : [];
 
   return (
@@ -192,42 +220,48 @@ const Dashboard = () => {
           </div>
           
           <div className="h-[500px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={costTrendData}>
-                <defs>
-                  <linearGradient id="colorCost" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#f97316" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#f97316" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-                <XAxis 
-                  dataKey="date" 
-                  stroke="#64748b" 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{fontSize: 12, fontWeight: 800}}
-                  dy={15}
-                  minTickGap={20}
-                />
-                <YAxis 
-                  stroke="#64748b" 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{fontSize: 12, fontWeight: 800}}
-                  tickFormatter={(value) => `₹${value}`}
-                />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: '#0f172a', 
-                    border: '1px solid #1e293b', 
-                    borderRadius: '20px',
-                    padding: '15px'
-                  }} 
-                />
-                <Area type="monotone" dataKey="cost" stroke="#f97316" strokeWidth={4} fillOpacity={1} fill="url(#colorCost)" />
-              </AreaChart>
-            </ResponsiveContainer>
+            {costTrendData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={costTrendData}>
+                  <defs>
+                    <linearGradient id="colorCost" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#f97316" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#f97316" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                  <XAxis 
+                    dataKey="date" 
+                    stroke="#64748b" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{fontSize: 12, fontWeight: 800}}
+                    dy={15}
+                    minTickGap={20}
+                  />
+                  <YAxis 
+                    stroke="#64748b" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{fontSize: 12, fontWeight: 800}}
+                    tickFormatter={(value) => `₹${value}`}
+                  />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: '#0f172a', 
+                      border: '1px solid #1e293b', 
+                      borderRadius: '20px',
+                      padding: '15px'
+                    }} 
+                  />
+                  <Area type="monotone" dataKey="cost" stroke="#f97316" strokeWidth={4} fillOpacity={1} fill="url(#colorCost)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-slate-500 font-bold">
+                No trend data available
+              </div>
+            )}
           </div>
         </div>
 
@@ -241,33 +275,39 @@ const Dashboard = () => {
             <p className="text-slate-500 text-lg mt-2 font-medium">Severity distribution</p>
           </div>
           <div className="h-[400px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={severityData}
-                  innerRadius={100}
-                  outerRadius={140}
-                  paddingAngle={8}
-                  dataKey="value"
-                >
-                  {severityData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.fill} stroke="none" />
-                  ))}
-                </Pie>
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: '#0f172a', 
-                    border: '1px solid #1e293b', 
-                    borderRadius: '20px'
-                  }} 
-                />
-                <Legend 
-                  verticalAlign="bottom" 
-                  height={36}
-                  formatter={(value) => <span className="text-slate-400 font-black uppercase text-xs tracking-widest ml-2">{value}</span>}
-                />
-              </PieChart>
-            </ResponsiveContainer>
+            {severityData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={severityData}
+                    innerRadius={100}
+                    outerRadius={140}
+                    paddingAngle={8}
+                    dataKey="value"
+                  >
+                    {severityData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.fill} stroke="none" />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: '#0f172a', 
+                      border: '1px solid #1e293b', 
+                      borderRadius: '20px'
+                    }} 
+                  />
+                  <Legend 
+                    verticalAlign="bottom" 
+                    height={36}
+                    formatter={(value) => <span className="text-slate-400 font-black uppercase text-xs tracking-widest ml-2">{value}</span>}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-slate-500 font-bold">
+                No severity data available
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -284,34 +324,40 @@ const Dashboard = () => {
             <p className="text-slate-500 text-lg mt-2 font-medium">Detections grouped by classification</p>
           </div>
           <div className="h-[350px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart layout="vertical" data={typeData} margin={{ left: 40, right: 40 }}>
-                <defs>
-                  <linearGradient id="barGradient" x1="0" y1="0" x2="1" y2="0">
-                    <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.8}/>
-                    <stop offset="100%" stopColor="#60a5fa" stopOpacity={1}/>
-                  </linearGradient>
-                </defs>
-                <XAxis type="number" hide />
-                <YAxis 
-                  dataKey="name" 
-                  type="category" 
-                  stroke="#64748b" 
-                  axisLine={false} 
-                  tickLine={false}
-                  tick={{fontSize: 12, fontWeight: 900}}
-                />
-                <Tooltip 
-                  cursor={{fill: '#1e293b', radius: 12}}
-                  contentStyle={{ 
-                    backgroundColor: '#0f172a', 
-                    border: '1px solid #1e293b', 
-                    borderRadius: '20px'
-                  }} 
-                />
-                <Bar dataKey="value" fill="url(#barGradient)" radius={[0, 12, 12, 0]} barSize={32} />
-              </BarChart>
-            </ResponsiveContainer>
+            {typeData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart layout="vertical" data={typeData} margin={{ left: 40, right: 40 }}>
+                  <defs>
+                    <linearGradient id="barGradient" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.8}/>
+                      <stop offset="100%" stopColor="#60a5fa" stopOpacity={1}/>
+                    </linearGradient>
+                  </defs>
+                  <XAxis type="number" hide />
+                  <YAxis 
+                    dataKey="name" 
+                    type="category" 
+                    stroke="#64748b" 
+                    axisLine={false} 
+                    tickLine={false}
+                    tick={{fontSize: 12, fontWeight: 900}}
+                  />
+                  <Tooltip 
+                    cursor={{fill: '#1e293b', radius: 12}}
+                    contentStyle={{ 
+                      backgroundColor: '#0f172a', 
+                      border: '1px solid #1e293b', 
+                      borderRadius: '20px'
+                    }} 
+                  />
+                  <Bar dataKey="value" fill="url(#barGradient)" radius={[0, 12, 12, 0]} barSize={32} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-slate-500 font-bold">
+                No category data available
+              </div>
+            )}
           </div>
         </div>
 
@@ -331,23 +377,29 @@ const Dashboard = () => {
             </Link>
           </div>
           <div className="flex-1 overflow-y-auto max-h-[400px] p-6 space-y-4 scrollbar-thin scrollbar-thumb-slate-800">
-            {dashboard?.recent_reports?.map((report) => (
-              <div key={report.id} className="p-6 bg-slate-950/50 rounded-[2rem] border border-slate-800/50 flex items-center justify-between hover:bg-slate-800/30 transition-all duration-300 group">
-                <div className="flex items-center gap-6">
-                  <div className="w-16 h-16 rounded-2xl bg-slate-800 flex items-center justify-center text-orange-500 group-hover:scale-110 transition-transform">
-                    <Zap size={24} />
+            {dashboard?.recent_reports && dashboard.recent_reports.length > 0 ? (
+              dashboard.recent_reports.map((report) => (
+                <div key={report?.id} className="p-6 bg-slate-950/50 rounded-[2rem] border border-slate-800/50 flex items-center justify-between hover:bg-slate-800/30 transition-all duration-300 group">
+                  <div className="flex items-center gap-6">
+                    <div className="w-16 h-16 rounded-2xl bg-slate-800 flex items-center justify-center text-orange-500 group-hover:scale-110 transition-transform">
+                      <Zap size={24} />
+                    </div>
+                    <div>
+                      <p className="text-xl text-white font-black capitalize tracking-tight">{(report?.damage_type ?? 'Unknown').replace('_', ' ')}</p>
+                      <p className="text-slate-500 text-xs font-black uppercase tracking-[0.3em] mt-1">Incident ID: {report?.id ?? 'N/A'}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xl text-white font-black capitalize tracking-tight">{report.damage_type.replace('_', ' ')}</p>
-                    <p className="text-slate-500 text-xs font-black uppercase tracking-[0.3em] mt-1">Incident ID: {report.id}</p>
+                  <div className="text-right">
+                    <p className="text-2xl text-white font-black tracking-tight">₹{(report?.total_cost ?? 0).toLocaleString('en-IN')}</p>
+                    <p className="text-slate-500 text-sm font-bold mt-1 uppercase">{report?.created_at ? new Date(report.created_at).toLocaleTimeString() : 'N/A'}</p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-2xl text-white font-black tracking-tight">₹{report.total_cost.toLocaleString('en-IN')}</p>
-                  <p className="text-slate-500 text-sm font-bold mt-1 uppercase">{new Date(report.created_at).toLocaleTimeString()}</p>
-                </div>
+              ))
+            ) : (
+              <div className="flex items-center justify-center h-20 text-slate-500 font-medium">
+                No recent reports available
               </div>
-            ))}
+            )}
           </div>
         </div>
       </div>

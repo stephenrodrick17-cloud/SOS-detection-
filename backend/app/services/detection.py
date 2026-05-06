@@ -272,6 +272,18 @@ class DamageDetectionService:
             confidence = float(box.conf[0])
             class_id = int(box.cls[0])
             
+            # Clip coordinates to image bounds
+            h, w = image.shape[:2]
+            x1 = max(0, min(x1, w))
+            y1 = max(0, min(y1, h))
+            x2 = max(0, min(x2, w))
+            y2 = max(0, min(y2, h))
+            
+            # Skip if bounding box is invalid (no area)
+            if x2 <= x1 or y2 <= y1:
+                logger.warning(f"Invalid bounding box after clipping: ({x1}, {y1}, {x2}, {y2})")
+                continue
+            
             # Calculate damage area (in pixels, normalized)
             area = (x2 - x1) * (y2 - y1)
             total_pixels = image.shape[0] * image.shape[1]

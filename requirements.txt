@@ -1,39 +1,9 @@
-# Requirements file for Infrastructure Damage Detection System
-
-# Core dependencies
-fastapi>=0.104.1
-uvicorn>=0.24.0
-sqlalchemy>=2.0.23
-pydantic>=2.5.0
-pydantic[email]>=2.5.0
-python-dotenv>=1.0.0
-
-# Computer Vision (CPU-only inference)
-ultralytics>=8.0.211
-opencv-python>=4.8.1.78
-onnxruntime>=1.17.0  # CPU version only - no CUDA
-numpy>=1.24.3
-scikit-image>=0.22.0
-
-# Image processing
-Pillow>=10.0.1
-
-# Database
-alembic>=1.13.0
-
-# External APIs
-twilio>=9.0.4
-sendgrid>=6.11.0
-
-# Utilities
-requests>=2.31.0
-aiofiles>=23.2.1
-httpx>=0.25.1
-
-# Security
-python-multipart>=0.0.6
-passlib>=1.7.4
-python-jose>=3.3.0
-
-# Production
-gunicorn>=21.2.0
+streamlit
+pandas
+numpy
+requests
+opencv-python-headless
+Pillow
+folium
+streamlit-folium
+ultralytic

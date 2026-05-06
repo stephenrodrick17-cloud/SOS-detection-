@@ -173,11 +173,11 @@ class AlertService:
         severity_text = severity.upper()
         
         message = (
-            f"Infrastructure Damage Alert (Report #{report_id})\\n"
-            f"Type: {damage_type.upper()}\\n"
-            f"Severity: {severity_text}\\n"
-            f"Location: {location}\\n"
-            f"Est. Cost: ${cost:,.2f}\\n"
+            f"Infrastructure Damage Alert (Report #{report_id})\n"
+            f"Type: {damage_type.upper()}\n"
+            f"Severity: {severity_text}\n"
+            f"Location: {location}\n"
+            f"Est. Cost: ${cost:,.2f}\n"
             f"Please respond ASAP for quick repairs."
         )
         

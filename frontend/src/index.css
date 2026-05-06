@@ -2,12 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Sora:wght@400;600;700&display=swap');
 
 :root {
   --foreground-rgb: 255, 255, 255;
   --background-start-rgb: 2, 6, 23;
   --background-end-rgb: 2, 6, 23;
+}
+
+* {
+  @apply transition-colors duration-200;
 }
 
 html {
@@ -17,18 +21,179 @@ html {
 
 body {
   color: rgb(var(--foreground-rgb));
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Sora', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   font-size: 16px !important;
   line-height: 1.6;
+  background: linear-gradient(135deg, #020617 0%, #0f172a 50%, #020617 100%);
+  background-attachment: fixed;
 }
 
+/* Animated background */
+@keyframes backgroundShift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(circle at 20% 50%, rgba(249, 115, 22, 0.05) 0%, transparent 50%),
+              radial-gradient(circle at 80% 80%, rgba(59, 130, 246, 0.05) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Glass panel styling */
 .glass-panel {
-  @apply bg-slate-900/50 backdrop-blur-xl border border-slate-800 shadow-2xl;
+  @apply bg-slate-900/30 backdrop-blur-2xl border border-slate-700/50 shadow-2xl;
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.4) 0%, rgba(30, 41, 59, 0.2) 100%);
+}
+
+.glass-panel-dark {
+  @apply bg-slate-950/50 backdrop-blur-xl border border-slate-800/50 shadow-2xl;
+}
+
+.glass-panel-bright {
+  @apply bg-slate-900/60 backdrop-blur-2xl border border-slate-700/70 shadow-2xl;
+}
+
+/* Glowing border effect */
+.glow-border {
+  @apply border border-transparent bg-clip-padding;
+  background-image: linear-gradient(135deg, #020617, #020617), 
+                    linear-gradient(135deg, #f97316, #3b82f6, #f97316);
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+}
+
+/* Shimmer effect for loading */
+.shimmer {
+  background: linear-gradient(90deg, rgba(255,255,255,.1) 0%, rgba(255,255,255,.3) 50%, rgba(255,255,255,.1) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}
+
+/* Gradient text */
+.gradient-text {
+  @apply bg-gradient-to-r from-orange-500 via-orange-400 to-red-500 bg-clip-text text-transparent;
+  animation: gradient-shift 3s ease infinite;
+  background-size: 200% 200%;
+}
+
+/* Smooth transitions */
+.transition-smooth {
+  @apply transition-all duration-300 ease-out;
+}
+
+.transition-smooth-slow {
+  @apply transition-all duration-500 ease-out;
+}
+
+/* Hover effects */
+.hover-lift {
+  @apply hover:shadow-glow hover:-translate-y-1 transition-smooth;
+}
+
+.hover-glow {
+  @apply hover:shadow-glow-lg transition-smooth;
+}
+
+/* Card styling */
+.card-modern {
+  @apply glass-panel rounded-2xl p-6 hover-lift;
+}
+
+.card-dark {
+  @apply glass-panel-dark rounded-2xl p-6 hover-lift;
+}
+
+/* Button styling */
+.btn-primary {
+  @apply px-6 py-3 rounded-xl font-semibold bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg hover:shadow-glow transform hover:scale-105 transition-smooth disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none;
+}
+
+.btn-secondary {
+  @apply px-6 py-3 rounded-xl font-semibold bg-slate-800 text-slate-200 border border-slate-700 shadow-lg hover:bg-slate-700 hover:border-slate-600 transform hover:scale-105 transition-smooth disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none;
+}
+
+.btn-outline {
+  @apply px-6 py-3 rounded-xl font-semibold text-orange-500 border-2 border-orange-500/50 hover:bg-orange-500/10 transform hover:scale-105 transition-smooth disabled:opacity-50;
+}
+
+.btn-icon {
+  @apply p-3 rounded-xl bg-slate-800/50 hover:bg-slate-700 border border-slate-700/50 transition-smooth hover-lift;
+}
+
+/* Text effects */
+.text-glow {
+  @apply text-orange-400 drop-shadow-lg;
+}
+
+.text-shimmer {
+  background: linear-gradient(90deg, #cbd5e1, #f1f5f9, #cbd5e1);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shimmer 2s infinite;
+}
+
+/* Badge styling */
+.badge-success {
+  @apply inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 font-semibold text-sm;
+}
+
+.badge-warning {
+  @apply inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/50 font-semibold text-sm;
+}
+
+.badge-danger {
+  @apply inline-flex items-center gap-2 px-4 py-2 rounded-full bg-red-500/20 text-red-400 border border-red-500/50 font-semibold text-sm;
+}
+
+.badge-info {
+  @apply inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/50 font-semibold text-sm;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(30, 41, 59, 0.2);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(249, 115, 22, 0.5);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(249, 115, 22, 0.8);
 }
 
 ::selection {
   background: rgba(249, 115, 22, 0.3);
   color: inherit;
+}
+
+/* Responsive grid */
+@screen sm {
+  .grid-auto-fit {
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  }
+}
+
+@screen lg {
+  .grid-auto-fit {
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  }
 }

@@ -7,6 +7,7 @@ const ReportsPage = () => {
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
   const [selectedReport, setSelectedReport] = useState(null);
 
   useEffect(() => {
@@ -32,9 +33,19 @@ const ReportsPage = () => {
     toast.info('Generating Intelligence Export (PDF)...');
   };
 
-  const filteredReports = filter === 'all' 
-    ? reports 
-    : reports.filter(r => r.severity === filter || r.status === filter);
+  // Apply both filter and search term with proper validation
+  const filteredReports = reports.filter(r => {
+    const matchesFilter = filter === 'all' 
+      ? true 
+      : (r?.severity === filter || r?.status === filter);
+    
+    const matchesSearch = !searchTerm 
+      ? true 
+      : (String(r?.id).includes(searchTerm) || 
+         (r?.damage_type ?? '').toLowerCase().includes(searchTerm.toLowerCase()));
+    
+    return matchesFilter && matchesSearch;
+  });
 
   if (loading) {
     return (
@@ -81,6 +92,8 @@ const ReportsPage = () => {
             <input 
               type="text" 
               placeholder="Search by ID or damage type..." 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value.slice(0, 100))}
               className="w-full bg-slate-950 border border-slate-800 rounded-2xl py-3 pl-12 pr-4 text-sm font-medium text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all"
             />
           </div>
@@ -126,13 +139,13 @@ const ReportsPage = () => {
                   <td className="px-8 py-6">
                     <div className="flex items-center gap-2">
                       <div className="flex-1 w-12 bg-slate-800 h-1 rounded-full overflow-hidden">
-                        <div className="bg-blue-500 h-full" style={{ width: `${report.confidence_score * 100}%` }}></div>
+                        <div className="bg-blue-500 h-full" style={{ width: `${(report.confidence_score ?? 0) * 100}%` }}></div>
                       </div>
-                      <span className="text-xs font-mono text-slate-400">{(report.confidence_score * 100).toFixed(0)}%</span>
+                      <span className="text-xs font-mono text-slate-400">{((report.confidence_score ?? 0) * 100).toFixed(0)}%</span>
                     </div>
                   </td>
                   <td className="px-8 py-6">
-                    <span className="text-emerald-500 font-black text-sm">₹{report.total_cost.toLocaleString('en-IN')}</span>
+                    <span className="text-emerald-500 font-black text-sm">₹{(report.total_cost ?? 0).toLocaleString('en-IN')}</span>
                   </td>
                   <td className="px-8 py-6">
                     <StatusBadge status={report.status} />
@@ -179,11 +192,19 @@ const ReportsPage = () => {
               <div className="grid grid-cols-1 lg:grid-cols-2">
                 {/* Left: Image */}
                 <div className="relative h-[300px] lg:h-auto bg-slate-950">
-                  <img 
-                    src={`http://localhost:8000/${selectedReport.image_path}`} 
-                    alt="Damage" 
-                    className="w-full h-full object-cover"
-                  />
+                  {selectedReport.image_path ? (
+                    <img 
+                      src={`/api/detection/report/${selectedReport.id}/image`}
+                      alt="Damage" 
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.parentElement.innerHTML += '<div className="flex items-center justify-center h-full"><p className="text-slate-500">Image not available</p></div>';
+                      }}
+                    />
+                  ) : (
+                    <div className="flex items-center justify-center h-full text-slate-500">No image available</div>
+                  )}
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent"></div>
                   <div className="absolute bottom-8 left-8">
                     <SeverityBadge severity={selectedReport.severity} />
@@ -198,10 +219,10 @@ const ReportsPage = () => {
                   <div>
                     <p className="text-slate-500 text-xs font-black uppercase tracking-[0.2em] mb-4">Structural Intelligence</p>
                     <div className="grid grid-cols-2 gap-6">
-                      <DetailBox icon={<Activity size={16} />} label="Confidence" value={`${(selectedReport.confidence_score * 100).toFixed(1)}%`} />
-                      <DetailBox icon={<Shield size={16} />} label="Status" value={selectedReport.status.replace('_', ' ')} />
-                      <DetailBox icon={<MapPin size={16} />} label="Road Type" value={selectedReport.road_type || 'Urban'} />
-                      <DetailBox icon={<Calendar size={16} />} label="Detected" value={new Date(selectedReport.created_at).toLocaleDateString()} />
+                      <DetailBox icon={<Activity size={16} />} label="Confidence" value={`${((selectedReport?.confidence_score ?? 0) * 100).toFixed(1)}%`} />
+                      <DetailBox icon={<Shield size={16} />} label="Status" value={(selectedReport?.status ?? 'unknown').replace('_', ' ')} />
+                      <DetailBox icon={<MapPin size={16} />} label="Road Type" value={selectedReport?.road_type ?? 'Urban'} />
+                      <DetailBox icon={<Calendar size={16} />} label="Detected" value={selectedReport?.created_at ? new Date(selectedReport.created_at).toLocaleDateString() : 'N/A'} />
                     </div>
                   </div>
 
@@ -210,20 +231,20 @@ const ReportsPage = () => {
                     <div className="space-y-4">
                       <div className="flex justify-between items-center">
                         <span className="text-slate-400 text-sm font-medium">Estimated Material</span>
-                        <span className="text-white font-bold">${(selectedReport.estimated_cost || 0).toLocaleString()}</span>
+                        <span className="text-white font-bold">${(selectedReport?.estimated_cost ?? 0).toLocaleString()}</span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-slate-400 text-sm font-medium">Labor Cost</span>
-                        <span className="text-white font-bold">${(selectedReport.labor_cost || 0).toLocaleString()}</span>
+                        <span className="text-white font-bold">${(selectedReport?.labor_cost ?? 0).toLocaleString()}</span>
                       </div>
                       <div className="pt-4 border-t border-slate-800 flex justify-between items-center">
                         <span className="text-orange-500 font-black text-sm uppercase">Total Recovery</span>
-                        <span className="text-emerald-500 font-black text-2xl">${selectedReport.total_cost.toLocaleString()}</span>
+                        <span className="text-emerald-500 font-black text-2xl">${(selectedReport?.total_cost ?? 0).toLocaleString()}</span>
                       </div>
                     </div>
                   </div>
 
-                  {selectedReport.notes && (
+                  {selectedReport?.notes && (
                     <div>
                       <p className="text-slate-500 text-xs font-black uppercase tracking-[0.2em] mb-2">Field Notes</p>
                       <p className="text-slate-300 text-sm leading-relaxed">{selectedReport.notes}</p>

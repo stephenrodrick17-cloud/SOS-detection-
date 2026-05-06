@@ -19,12 +19,17 @@ const AIChatWidget = ({ analysisContext = null, initialMessage = null }) => {
       setMessages([]);
       setIsOpen(true);
       setHasNewMessage(false);
+      let isMounted = true;
+      
       // Trigger AI explanation with a slight delay for smooth UX
       const triggerExplanation = async () => {
         const text = 'Explain this infrastructure damage analysis to me in detail.';
         const userMsg = { role: 'user', content: text, timestamp: new Date() };
+        if (!isMounted) return;
         setMessages([userMsg]);
         setLoading(true);
+        
+        const abortController = new AbortController();
         try {
           const response = await fetch(`${BASE_URL}/ai/chat`, {
             method: 'POST',
@@ -34,19 +39,32 @@ const AIChatWidget = ({ analysisContext = null, initialMessage = null }) => {
               analysis_context: analysisContext,
               conversation_history: [],
             }),
+            signal: abortController.signal
           });
+          
+          if (!response.ok) {
+            throw new Error(`API error: ${response.status}`);
+          }
+          
           const data = await response.json();
-          setMessages(prev => [...prev, { role: 'assistant', content: data.reply, timestamp: new Date() }]);
-        } catch {
-          setMessages(prev => [...prev, { role: 'assistant', content: 'Failed to get analysis. Make sure the backend is running and GEMINI_API_KEY is set.', timestamp: new Date(), isError: true }]);
+          if (isMounted) {
+            setMessages(prev => [...prev, { role: 'assistant', content: data.reply, timestamp: new Date() }]);
+          }
+        } catch (error) {
+          if (isMounted && error.name !== 'AbortError') {
+            setMessages(prev => [...prev, { role: 'assistant', content: 'Failed to get analysis. Make sure the backend is running and GEMINI_API_KEY is set.', timestamp: new Date(), isError: true }]);
+          }
         } finally {
-          setLoading(false);
+          if (isMounted) setLoading(false);
         }
       };
+      
       const t = setTimeout(triggerExplanation, 600);
-      return () => clearTimeout(t);
+      return () => {
+        isMounted = false;
+        clearTimeout(t);
+      };
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [analysisContext]);
 
   // Welcome message on first open
@@ -58,8 +76,7 @@ const AIChatWidget = ({ analysisContext = null, initialMessage = null }) => {
         timestamp: new Date()
       }]);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen]);
+  }, [isOpen, analysisContext]);
 
   useEffect(() => {
     scrollToBottom();

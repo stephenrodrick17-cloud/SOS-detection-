@@ -30,7 +30,11 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Import routes
-from app.routes import detection, alerts, contractors, dashboard, datasets, monitoring, feedback, ai_chat
+from app.routes import detection, alerts, contractors, dashboard, datasets, monitoring, feedback, ai_chat, location_intelligence
+
+# Ensure uploads directory exists
+UPLOAD_DIR = Path("uploads")
+UPLOAD_DIR.mkdir(exist_ok=True)
 
 # Create FastAPI app
 app = FastAPI(
@@ -40,11 +44,14 @@ app = FastAPI(
 )
 
 # Add CORS middleware
+allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:8080").split(",")
+allowed_methods = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify allowed origins
+    allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=allowed_methods,
     allow_headers=["*"],
 )
 
@@ -57,6 +64,7 @@ app.include_router(datasets.router, prefix="/api/datasets", tags=["Datasets"])
 app.include_router(monitoring.router, prefix="/api/monitoring", tags=["Monitoring"])
 app.include_router(feedback.router, prefix="/api/feedback", tags=["Feedback & Retraining"])
 app.include_router(ai_chat.router, prefix="/api/ai", tags=["AI Assistant"])
+app.include_router(location_intelligence.router, prefix="/api/location", tags=["Location Intelligence"])
 
 # Mount static files for archives
 # Base project directory (Road portfolio/)

@@ -1,6 +1,7 @@
 """
-AI Chat Routes - Powered by Google Gemini
+AI Chat Routes - Powered by Open Router API
 Explains infrastructure damage analysis results to users
+Supports multiple models: GPT-4, Claude, Gemini, etc.
 """
 
 from fastapi import APIRouter, HTTPException
@@ -14,8 +15,9 @@ import httpx
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
+OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "openai/gpt-4o-mini")
+OPENROUTER_API_URL = os.getenv("OPENROUTER_API_URL", "https://openrouter.ai/api/v1/chat/completions")
 
 
 class ChatMessage(BaseModel):
@@ -71,9 +73,10 @@ Use this context to provide specific, accurate explanations about what was detec
 async def chat_with_ai(request: ChatRequest):
     """
     Chat with AI assistant about damage analysis results.
-    Uses Google Gemini API for intelligent responses.
+    Uses Open Router API for intelligent responses.
+    Supports multiple AI models via Open Router.
     """
-    if not GEMINI_API_KEY:
+    if not OPENROUTER_API_KEY:
         # Return a helpful fallback if no API key is configured
         return ChatResponse(
             reply=generate_fallback_response(request.message, request.analysis_context),
@@ -83,49 +86,53 @@ async def chat_with_ai(request: ChatRequest):
     try:
         system_prompt = build_system_prompt(request.analysis_context)
         
-        # Build conversation history for Gemini
-        contents = []
+        # Build conversation history for OpenRouter (OpenAI format)
+        messages = []
+        
+        # Add system prompt
+        messages.append({
+            "role": "system",
+            "content": system_prompt
+        })
         
         # Add conversation history
         for msg in (request.conversation_history or []):
-            contents.append({
-                "role": "user" if msg.role == "user" else "model",
-                "parts": [{"text": msg.content}]
+            messages.append({
+                "role": msg.role,
+                "content": msg.content
             })
         
         # Add the current message
-        contents.append({
+        messages.append({
             "role": "user",
-            "parts": [{"text": request.message}]
+            "content": request.message
         })
         
+        # Prepare OpenRouter API request payload
         payload = {
-            "system_instruction": {
-                "parts": [{"text": system_prompt}]
-            },
-            "contents": contents,
-            "generationConfig": {
-                "temperature": 0.7,
-                "maxOutputTokens": 1024,
-                "topP": 0.95
-            },
-            "safetySettings": [
-                {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
-                {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
-                {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
-                {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"}
-            ]
+            "model": OPENROUTER_MODEL,
+            "messages": messages,
+            "temperature": 0.7,
+            "max_tokens": 1024,
+            "top_p": 0.95
+        }
+        
+        headers = {
+            "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+            "HTTP-Referer": "http://localhost:3000",
+            "X-Title": "RoadGuard Infrastructure Damage Detection",
+            "Content-Type": "application/json"
         }
         
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
-                f"{GEMINI_API_URL}?key={GEMINI_API_KEY}",
+                OPENROUTER_API_URL,
                 json=payload,
-                headers={"Content-Type": "application/json"}
+                headers=headers
             )
             
             if response.status_code != 200:
-                logger.error(f"Gemini API error: {response.status_code} - {response.text}")
+                logger.error(f"OpenRouter API error: {response.status_code} - {response.text}")
                 return ChatResponse(
                     reply=generate_fallback_response(request.message, request.analysis_context),
                     success=True
@@ -133,12 +140,12 @@ async def chat_with_ai(request: ChatRequest):
             
             data = response.json()
             
-            # Extract the text response
+            # Extract the text response from OpenAI-format response
             reply_text = ""
-            if "candidates" in data and len(data["candidates"]) > 0:
-                candidate = data["candidates"][0]
-                if "content" in candidate and "parts" in candidate["content"]:
-                    reply_text = candidate["content"]["parts"][0].get("text", "")
+            if "choices" in data and len(data["choices"]) > 0:
+                choice = data["choices"][0]
+                if "message" in choice and "content" in choice["message"]:
+                    reply_text = choice["message"]["content"]
             
             if not reply_text:
                 reply_text = generate_fallback_response(request.message, request.analysis_context)
@@ -146,7 +153,7 @@ async def chat_with_ai(request: ChatRequest):
             return ChatResponse(reply=reply_text, success=True)
     
     except httpx.TimeoutException:
-        logger.error("Gemini API timeout")
+        logger.error("OpenRouter API timeout")
         return ChatResponse(
             reply=generate_fallback_response(request.message, request.analysis_context),
             success=True

@@ -8,15 +8,23 @@ venv/
 env/
 .env
 
-# Node
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+# Streamlit
+.streamlit/
 
-# React
-frontend/build/
-frontend/.env
+# Model files (too large for Git)
+*.pt
+*.pth
+*.h5
+*.ckpt
+*.pkl
+model/datasets/
+model/trained_models/
+
+# Data
+*.csv
+*.db
+*.sqlite
+database/archive*/
 
 # IDE
 .vscode/
@@ -28,28 +36,27 @@ frontend/.env
 .DS_Store
 Thumbs.db
 
-# Model weights
-*.pt
-*.pth
-*.h5
-model/trained_models/
-
-# Database
-*.db
-*.sqlite
-database/archive*/
-backend/uploads/
-uploads/
-runs/
-*.jpg
-*.jpeg
-*.png
-*.gif
-!frontend/public/*.png
-!frontend/public/*.jpg
-!frontend/src/assets/*.png
-!frontend/src/assets/*.jpg
-
-
 # Logs
 *.log
+
+# Node (if any)
+node_modules/
+npm-debug.log
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+
+# Frontend build
+frontend/build/
+frontend/dist/
+
+# Uploads
+uploads/
+
+# Runs/artifacts
+runs/
+*.egg-info/
+dist/
+build/
