@@ -30,15 +30,27 @@ const HomePage = () => {
   }, []);
 
   return (
-    <div className="relative -mt-20">
+    <div className="relative">
+      {/* Global Background Image (Covers entire page) */}
+      <div 
+        className="fixed inset-0 z-[-1]"
+        style={{
+          backgroundImage: `url('/hero-bg.jpg')`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundAttachment: 'fixed',
+          filter: 'brightness(0.2) contrast(1.1) saturate(0.8)',
+        }}
+      ></div>
+
       {/* Hero Section */}
       <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20">
-        <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-orange-500/10 via-transparent to-transparent"></div>
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-blue-500/5 via-transparent to-transparent"></div>
+        <div className="absolute inset-0 bg-gradient-to-b from-slate-950/80 via-transparent to-slate-950 z-[0]">
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-orange-500/20 via-transparent to-transparent"></div>
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-blue-500/10 via-transparent to-transparent"></div>
         </div>
 
-        <div className="absolute inset-0 opacity-20" style={{
+        <div className="absolute inset-0 opacity-10 z-[0]" style={{
           backgroundImage: `linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)`,
           backgroundSize: '60px 60px'
         }}></div>
@@ -49,14 +61,14 @@ const HomePage = () => {
             <span className="text-xs font-semibold uppercase tracking-widest text-orange-400">AI-Powered Infrastructure Monitoring</span>
           </motion.div>
 
-          <h1 className="text-4xl sm:text-5xl lg:text-7xl font-black text-white leading-tight tracking-tight mb-6">
+          <h1 className="text-4xl sm:text-5xl lg:text-7xl font-black text-white leading-tight tracking-tight mb-6 drop-shadow-2xl">
             INTELLIGENT <br className="hidden sm:block" />
-            <span className="bg-gradient-to-r from-orange-500 via-red-500 to-pink-500 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-orange-500 via-red-500 to-pink-500 bg-clip-text text-transparent drop-shadow-sm">
               ROAD INFRASTRUCTURE CONTROL
             </span>
           </h1>
 
-          <p className="text-lg lg:text-xl text-slate-400 max-w-2xl mx-auto mb-10 leading-relaxed">
+          <p className="text-lg lg:text-xl text-slate-200 max-w-2xl mx-auto mb-10 leading-relaxed font-medium drop-shadow-lg">
             RoadGuard combines YOLOv8 AI, real-time location intelligence, and emergency coordination to create 
             the most advanced infrastructure monitoring system in India.
           </p>
