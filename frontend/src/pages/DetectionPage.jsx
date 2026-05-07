@@ -20,6 +20,7 @@ const DetectionPage = () => {
   // Real-time detection states
   const [isRealtimeActive, setIsRealtimeActive] = useState(false);
   const [realtimeDetections, setRealtimeDetections] = useState([]);
+  const [webcamStream, setWebcamStream] = useState(null);
   
   const fileInputRef = useRef(null);
   const videoRef = useRef(null);
@@ -194,20 +195,35 @@ const DetectionPage = () => {
 
   const startWebcam = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      const constraints = {
+        video: {
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          facingMode: "environment"
+        }
+      };
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      setWebcamStream(stream);
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        videoRef.current.play();
+        videoRef.current.onloadedmetadata = () => {
+          videoRef.current.play().catch(e => console.error("Video play failed:", e));
+        };
       }
+      setIsRealtimeActive(false);
+      toast.success('Optical sensors initialized');
     } catch (error) {
-      toast.error('Failed to access webcam');
+      console.error('Webcam access error:', error);
+      toast.error('Failed to access webcam: ' + error.message);
     }
   };
 
   const stopWebcam = () => {
-    if (videoRef.current && videoRef.current.srcObject) {
-      const tracks = videoRef.current.srcObject.getTracks();
-      tracks.forEach(track => track.stop());
+    if (webcamStream) {
+      webcamStream.getTracks().forEach(track => track.stop());
+      setWebcamStream(null);
+    }
+    if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
     setIsRealtimeActive(false);
@@ -387,8 +403,11 @@ const DetectionPage = () => {
               <div className="relative rounded-[22px] overflow-hidden bg-slate-950 aspect-video group shadow-inner h-full min-h-[500px]">
                 <video
                   ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
                   className="w-full h-full object-cover"
-                  style={{ display: videoRef.current?.srcObject ? 'block' : 'none' }}
+                  style={{ display: webcamStream ? 'block' : 'none' }}
                 />
                 <canvas ref={canvasRef} className="hidden" width="640" height="480" />
                 
@@ -412,7 +431,7 @@ const DetectionPage = () => {
                   </div>
                 ))}
 
-                {!videoRef.current?.srcObject && (
+                {!webcamStream && (
                   <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/50 backdrop-blur-sm">
                     <div className="w-20 h-20 bg-slate-800 rounded-3xl flex items-center justify-center mb-6 border border-slate-700 shadow-xl">
                       <Camera className="w-10 h-10 text-slate-600" />
@@ -427,7 +446,7 @@ const DetectionPage = () => {
                   </div>
                 )}
 
-                {videoRef.current?.srcObject && (
+                {webcamStream && (
                   <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-4 bg-slate-950/80 backdrop-blur-xl p-3 rounded-3xl border border-white/10 shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                     <button 
                       onClick={toggleRealtime}

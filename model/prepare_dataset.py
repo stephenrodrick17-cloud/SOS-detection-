@@ -15,9 +15,9 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Paths to your datasets
-ARCHIVE_2 = r"c:\Users\asus\Downloads\Road portfolio\infrastructure-damage-detection\database\archive (2)"
-ARCHIVE_3 = r"c:\Users\asus\Downloads\Road portfolio\infrastructure-damage-detection\database\archive (3)"
-ARCHIVE_4 = r"c:\Users\asus\Downloads\Road portfolio\infrastructure-damage-detection\database\archive (4)"
+ARCHIVE_2 = r"c:\Users\asus\Downloads\Road portfolio\archive (2)"
+ARCHIVE_3 = r"c:\Users\asus\Downloads\Road portfolio\archive (3)"
+ARCHIVE_4 = r"c:\Users\asus\Downloads\Road portfolio\archive (4)"
 
 # Output dataset path
 OUTPUT_DATASET = r"c:\Users\asus\Downloads\Road portfolio\infrastructure-damage-detection\model\datasets\combined_dataset"
