@@ -1,20 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer,
   PieChart, Pie, Cell, AreaChart, Area
 } from 'recharts';
 import {
-  AlertCircle, TrendingUp, Users, MapPin, Activity, ShieldAlert, Clock, ChevronRight,
+  AlertCircle, TrendingUp, Users, MapPin, Activity, ShieldAlert, Clock,
   Zap, Bot, Sparkles
 } from 'lucide-react';
 import API from '../services/api';
-import { Link } from 'react-router-dom';
 import { useAIChat } from '../components/AIChatContext';
 import locationDataService from '../services/locationDataService';
 
 const Dashboard = () => {
   const [dashboard, setDashboard] = useState(null);
-  const [locationData, setLocationData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState(null);
   const { setAnalysisContext } = useAIChat();
@@ -31,8 +29,7 @@ const Dashboard = () => {
         if (statsData && statsData.success) {
           setStats(statsData);
         }
-        const locData = await locationDataService.getLocationData(28.6139, 77.209, 5);
-        setLocationData(locData);
+        await locationDataService.getLocationData(28.6139, 77.209, 5);
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
       } finally {
