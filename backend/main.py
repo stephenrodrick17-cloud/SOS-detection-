@@ -33,8 +33,10 @@ logger = logging.getLogger(__name__)
 from app.routes import detection, alerts, contractors, dashboard, datasets, monitoring, feedback, ai_chat, location_intelligence
 
 # Ensure uploads directory exists
-UPLOAD_DIR = Path("uploads")
-UPLOAD_DIR.mkdir(exist_ok=True)
+# On Vercel, use /tmp for writable storage
+IS_VERCEL = os.getenv("VERCEL") == "1"
+UPLOAD_DIR = Path("/tmp/uploads") if IS_VERCEL else Path("uploads")
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 # Create FastAPI app
 app = FastAPI(
