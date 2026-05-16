@@ -43,6 +43,8 @@ function App() {
       <ErrorBoundary>
         <Router>
           <div className="min-h-screen text-slate-200 selection:bg-orange-500/30 selection:text-orange-200 bg-transparent">
+            {/* Conditional Background Overlay */}
+            <BackgroundOverlay />
         {/* Navigation */}
         <nav className="sticky top-0 z-50 bg-slate-950/60 backdrop-blur-xl border-b border-slate-800 shadow-2xl">
           <div className="w-full px-4 sm:px-6 lg:px-12">
@@ -230,6 +232,15 @@ function MobileNavLink({ to, icon, label, onClick, isEmergency }) {
       <span>{label}</span>
     </Link>
   );
+}
+
+function BackgroundOverlay() {
+  const location = useLocation();
+  const isHomePage = location.pathname === '/';
+  
+  if (isHomePage) return null;
+  
+  return <div className="pothole-bg-overlay animate-in fade-in duration-1000" />;
 }
 
 export default App;

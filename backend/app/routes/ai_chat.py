@@ -38,32 +38,39 @@ class ChatResponse(BaseModel):
 
 def build_system_prompt(analysis_context: Optional[Dict[str, Any]] = None) -> str:
     """Build a system prompt with analysis context if available."""
-    base_prompt = """You are RoadGuard AI Assistant, an expert infrastructure damage analysis assistant built into the RoadGuard Command Center platform. 
+    base_prompt = """You are RoadGuard AI, a sophisticated Infrastructure Intelligence & Civil Engineering Assistant. 
+You are integrated into the RoadGuard Command Center, a state-of-the-art platform for urban infrastructure monitoring.
 
-Your role is to:
-1. Explain infrastructure damage analysis results in clear, actionable language
-2. Describe what detected damage types mean (potholes, cracks, structural damage, etc.)
-3. Explain severity levels (minor, moderate, severe) and their implications
-4. Recommend repair priorities and urgency
-5. Help users understand cost estimations and why they matter
-6. Provide guidance on traffic and road safety implications
-7. Answer questions about the road monitoring system
+Your mission is to provide "Vast and Detailed" insights into road health, damage analysis, and maintenance strategies.
 
-You are professional yet approachable. Use technical terms but always explain them. 
-Format your responses with clear structure when appropriate.
-Keep responses concise but comprehensive (2-4 paragraphs max unless more is needed).
+CORE KNOWLEDGE DOMAINS:
+1. INFRASTRUCTURE TELEMETRY: Explain detections (potholes, cracks, rutting, alligator cracking, raveling) with deep technical detail.
+2. CIVIL ENGINEERING: Provide insights into pavement design, sub-base failure, and material science (bitumen grades, concrete types).
+3. COST OPTIMIZATION: Break down estimated costs into labor, materials, equipment, and administrative overhead.
+4. URGENCY & SAFETY: Categorize risks based on traffic volume, speed limits, and structural depth.
+5. MAINTENANCE STRATEGIES: Recommend specific treatments like "Mill and Fill", "Slurry Seal", "Full-Depth Reclamation", or "Crack Sealing".
+6. INDIAN CONTEXT: Use Indian road standards (IRC codes) and currency (₹) where appropriate.
+
+RESPONSE GUIDELINES:
+- Be VAST: Provide broader context, such as how a small crack can lead to a major pothole due to water ingress.
+- Be DETAILED: Include estimated repair timelines, required machinery (e.g., cold milling machines, pavers), and safety protocols.
+- FORMATTING: Use professional Markdown. Use ### for headers, **bold** for emphasis, and properly formatted bullet points.
+- STRUCTURE: Always start with a summary, followed by technical details, and end with a "Strategic Recommendation" section.
+- PROFESSIONALISM: Maintain a high-authority, technical yet accessible tone.
+
+If analysis data is provided, perform a DEEP DIVE into the specific detections, explaining the likely cause and the long-term impact if left untreated.
 """
     
     if analysis_context:
         context_str = json.dumps(analysis_context, indent=2)
         base_prompt += f"""
 
-CURRENT ANALYSIS CONTEXT (the user just completed this scan):
+REAL-TIME ANALYSIS TELEMETRY:
 ```json
 {context_str}
 ```
 
-Use this context to provide specific, accurate explanations about what was detected.
+TASK: Conduct a comprehensive analysis of the telemetry above. Identify patterns, assess cumulative risk, and provide a detailed engineering recommendation.
 """
     
     return base_prompt
@@ -179,28 +186,32 @@ def generate_fallback_response(message: str, context: Optional[Dict[str, Any]] =
             moderate_count = sum(1 for d in detections if d.get("severity") == "moderate")
             types = list(set(d.get("damage_type", "unknown") for d in detections))
             
-            response = f"**Analysis Summary:** I detected **{total} damage area(s)** in this scan.\n\n"
+            response = f"### 📊 Detailed Infrastructure Analysis\n\n"
+            response += f"I have processed the telemetry and identified **{total} critical anomalies**. "
+            response += f"The cumulative structural integrity of this road section is under stress due to ingress and load factors.\n\n"
             
             if severe_count > 0:
-                response += f"🔴 **{severe_count} severe** damage zone(s) require immediate repair to prevent further structural deterioration and safety hazards.\n\n"
+                response += f"🔴 **CRITICAL SEVERITY ({severe_count} Zones):** These areas exhibit deep structural failure (likely Base or Sub-base failure). Immediate intervention is required to prevent vehicle damage and potential accidents. **Recommended Action:** Deep-patching or localized reconstruction.\n\n"
             if moderate_count > 0:
-                response += f"🟡 **{moderate_count} moderate** damage area(s) should be scheduled for repair within 2–4 weeks.\n\n"
+                response += f"🟡 **MODERATE SEVERITY ({moderate_count} Zones):** Surface-level deterioration that will rapidly worsen with monsoon rains. **Recommended Action:** Microsurfacing or crack sealing within 14 days.\n\n"
             
             if types:
-                response += f"**Detected types:** {', '.join(t.replace('_', ' ').title() for t in types)}.\n\n"
-                response += "Each damage type requires different repair techniques and materials, which is reflected in the cost breakdown shown above."
+                response += f"**Damage Typology:** {', '.join(t.replace('_', ' ').title() for t in types)}.\n\n"
+                response += "Each type requires specific **IRC (Indian Road Congress)** standard treatments. For example, alligator cracking suggests fatigue from heavy axle loads, while potholes indicate water drainage issues."
             
             return response
         
         if any(word in message_lower for word in ["cost", "price", "repair", "expensive"]):
             total_cost = context.get("summary", {}).get("total_estimated_cost", 0)
             return (
-                f"**Cost Breakdown:** The total estimated repair cost is **₹{total_cost:,.0f}**.\n\n"
-                "This includes:\n"
-                "• **Materials (45%)**: Asphalt, concrete, aggregate, and bonding agents\n"
-                "• **Labor (40%)**: Skilled workers, equipment operators, and traffic management\n"
-                "• **GST (15%)**: Government tax applicable on repair contracts\n\n"
-                "Costs vary by damage severity — severe damage costs significantly more due to deep excavation and structural reinforcement requirements."
+                f"### 💰 Strategic Cost Estimation\n\n"
+                f"The projected expenditure for full restoration is **₹{total_cost:,.0f}**.\n\n"
+                "**Technical Breakdown:**\n"
+                "• **Material Logistics (45%)**: High-grade bitumen emulsion, VG-30/VG-40 grade asphalt, and aggregate materials.\n"
+                "• **Precision Labor & Machinery (35%)**: Deployment of pneumatic rollers, bitumen sprayers, and skilled engineering oversight.\n"
+                "• **Traffic Management & Safety (10%)**: Diversions, signage, and night-work premiums to minimize urban disruption.\n"
+                "• **Statutory GST & Overheads (10%)**: Standard government compliance and contractor margins.\n\n"
+                "**Pro-tip:** Early intervention in 'Moderate' zones can reduce these costs by up to 60% compared to 'Severe' reconstruction."
             )
     
     if any(word in message_lower for word in ["pothole", "crack", "damage"]):

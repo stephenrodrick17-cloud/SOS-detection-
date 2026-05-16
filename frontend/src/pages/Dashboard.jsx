@@ -124,10 +124,38 @@ const Dashboard = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            <MetricCard icon={<ShieldAlert className="w-8 h-8" />} label="Total Incidents" value={dashboard?.statistics?.total_reports || 0} trend="+12% from last cycle" color="from-orange-500 to-orange-600" shadow="shadow-orange-500/20" />
-            <MetricCard icon={<TrendingUp className="w-8 h-8" />} label="Projected Impact" value={`₹${(dashboard?.statistics?.total_estimated_cost / 1000).toFixed(1)}k`} trend="Economic valuation" color="from-blue-500 to-blue-600" shadow="shadow-blue-500/20" />
-            <MetricCard icon={<Activity className="w-8 h-8" />} label="Response Velocity" value={`${dashboard?.statistics?.avg_response_time || 0}h`} trend="Target: 2.0h" color="from-emerald-500 to-emerald-600" shadow="shadow-emerald-500/20" />
-            <MetricCard icon={<Zap className="w-8 h-8" />} label="Network Efficiency" value={`${((dashboard?.statistics?.on_time_completion_rate || 0) * 100).toFixed(0)}%`} trend="On-time resolution" color="from-purple-500 to-purple-600" shadow="shadow-purple-500/20" />
+            <MetricCard 
+              icon={<ShieldAlert className="w-8 h-8" />} 
+              label="Total Incidents" 
+              value={dashboard?.statistics?.total_reports || 0} 
+              trend="+12% from last cycle" 
+              color="from-orange-500 to-orange-600" 
+              shadow="shadow-orange-500/20" 
+            />
+            <MetricCard 
+              icon={<TrendingUp className="w-8 h-8" />} 
+              label="Projected Impact" 
+              value={`₹${((dashboard?.statistics?.total_estimated_cost || 0) / 1000).toFixed(1)}k`} 
+              trend="Economic valuation" 
+              color="from-blue-500 to-blue-600" 
+              shadow="shadow-blue-500/20" 
+            />
+            <MetricCard 
+              icon={<Activity className="w-8 h-8" />} 
+              label="Response Velocity" 
+              value={`${dashboard?.statistics?.avg_response_time || 0}h`} 
+              trend="Target: 2.0h" 
+              color="from-emerald-500 to-emerald-600" 
+              shadow="shadow-emerald-500/20" 
+            />
+            <MetricCard 
+              icon={<Zap className="w-8 h-8" />} 
+              label="Network Efficiency" 
+              value={`${((dashboard?.statistics?.on_time_completion_rate || 0) * 100).toFixed(0)}%`} 
+              trend="On-time resolution" 
+              color="from-purple-500 to-purple-600" 
+              shadow="shadow-purple-500/20" 
+            />
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-10">
